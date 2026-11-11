@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MySQL: Storage Engine · View · Routine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@500;700&family=Sarabun:wght@400;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e9eff3;--paper:#fff;--ink:#0f2a3d;--mute:#52697a;--teal:#0b8a84;--amber:#e39b2d;--rose:#c2415a;--code:#0f2230;--line:#cfdbe3}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:#0b1d2a;overflow:hidden;font-family:Sarabun,"Noto Sans Thai",sans-serif;color:var(--ink)}
+#stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center;background:var(--bg);overflow:hidden}
+.s{position:absolute;inset:0;display:none;padding:44px 60px 56px 92px;flex-direction:column;gap:16px}
+.s.on{display:flex}
+.rail{position:absolute;left:0;top:0;bottom:0;width:30px;background:var(--ink)}
+.rail i{position:absolute;left:0;width:30px;height:90px;background:var(--c,var(--teal));top:60px}
+h1,h2,h3{font-family:Prompt,sans-serif}
+h2{font-size:38px;line-height:1.2;letter-spacing:-.3px}
+h2 small{display:block;font-family:Sarabun;font-weight:600;font-size:17px;color:var(--teal);letter-spacing:0;margin-bottom:4px}
+h3{font-size:20px;margin-bottom:6px}
+p,li{font-size:19px;line-height:1.5}
+ul{padding-left:20px}
+li{margin:3px 0}
+b{font-weight:600}
+.row{display:flex;gap:18px;flex:1;min-height:0}
+.row>*{flex:1;min-width:0}
+.card{background:var(--paper);border-radius:10px;padding:16px 20px;border-top:5px solid var(--teal)}
+.card.a{border-color:var(--amber)}.card.r{border-color:var(--rose)}.card.i{border-color:var(--ink)}
+.card li,.card p{font-size:18px}
+pre{background:var(--code);color:#d9ecf2;border-radius:10px;padding:16px 20px;font:500 15.5px/1.55 "JetBrains Mono",ui-monospace,Consolas,monospace;overflow:hidden;white-space:pre}
+.k{color:#f2b457}.c{color:#7fa3b3}.f{color:#5fd1c6}
+table{width:100%;border-collapse:collapse;background:var(--paper);border-radius:10px;overflow:hidden;font-size:16.5px}
+th{background:var(--ink);color:#fff;font:600 16px Prompt,sans-serif;text-align:left;padding:9px 12px}
+td{padding:8px 12px;border-bottom:1px solid var(--line);line-height:1.4;vertical-align:top}
+td:first-child{font:600 17px Prompt,sans-serif;color:var(--teal)}
+.y{color:var(--teal);font-weight:600}.n{color:var(--rose);font-weight:600}
+.tag{display:inline-block;background:var(--ink);color:#fff;border-radius:20px;padding:2px 14px;font-size:15px;margin-right:6px}
+.layers{display:flex;flex-direction:column;gap:8px}
+.layers div{background:var(--paper);border-left:8px solid var(--teal);padding:8px 14px;border-radius:6px;font-size:17px}
+.layers div:nth-child(2){border-color:var(--amber)}.layers div:nth-child(3){border-color:var(--rose)}.layers div:nth-child(4){border-color:var(--ink);background:#dfeaf0}
+.cover{background:var(--ink);color:#fff;justify-content:center}
+.cover h1{font-size:64px;line-height:1.15}
+.cover p{color:#a9c4d1;font-size:22px}
+.pill{display:flex;gap:14px;margin-top:18px}
+.pill span{border:2px solid #2d5368;border-radius:30px;padding:8px 22px;font:500 20px Prompt}
+.pn{position:absolute;right:26px;bottom:16px;font-size:15px;color:var(--mute)}
+#bar{position:absolute;left:0;bottom:0;height:5px;background:var(--amber);transition:width .25s}
+.nav{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:9}
+.nav button{background:#ffffff22;color:#fff;border:1px solid #ffffff44;border-radius:20px;padding:6px 20px;font:15px Sarabun;cursor:pointer}
+.nav button:focus-visible{outline:3px solid var(--amber)}
+@media (prefers-reduced-motion:reduce){#bar{transition:none}}
+</style>
+</head>
+<body>
+<main id="stage">
+
+<!-- 1 -->
+<section class="s cover on"><div class="rail"><i style="--c:var(--amber)"></i></div>
+<p>เอกสารประกอบการเรียน · ฐานข้อมูล MySQL / MariaDB</p>
+<h1>Storage Engine<br>View และ Routine</h1>
+<p>หลักการ · ตัวอย่าง · จุดเด่น · ข้อจำกัด · การนำไปใช้จริง</p>
+<div class="pill"><span>1 Storage Engine</span><span>2 View</span><span>3 Routine</span></div></section>
+
+<!-- 2 -->
+<section class="s"><div class="rail"><i></i></div>
+<h2><small>ภาพรวม</small>3 เรื่อง 3 ชั้นของการออกแบบฐานข้อมูล</h2>
+<div class="row">
+<div class="card"><h3>Storage Engine</h3><p><b>“เก็บข้อมูลอย่างไร”</b></p><ul><li>กลไกระดับล่างที่อ่าน/เขียนข้อมูลลงดิสก์</li><li>กำหนดการทำธุรกรรม การล็อก ดัชนี และการกู้คืน</li><li>เลือกได้ <b>รายตาราง</b></li></ul></div>
+<div class="card a"><h3>View</h3><p><b>“มองข้อมูลอย่างไร”</b></p><ul><li>ตารางเสมือนจากคำสั่ง SELECT ที่บันทึกไว้</li><li>ซ่อนความซับซ้อนของ JOIN และจำกัดสิทธิ์การมองเห็น</li><li>ไม่เก็บข้อมูลซ้ำ</li></ul></div>
+<div class="card r"><h3>Routine</h3><p><b>“ประมวลผลอย่างไร”</b></p><ul><li>Stored Procedure และ Stored Function</li><li>รวมตรรกะธุรกิจไว้ในฝั่งเซิร์ฟเวอร์</li><li>เรียกซ้ำได้จากทุกแอปพลิเคชัน</li></ul></div>
+</div>
+<p><span class="tag">Storage Engine</span> เลือกประสิทธิภาพ/ความปลอดภัย · <span class="tag">View</span> เลือกมุมมอง · <span class="tag">Routine</span> เลือกตรรกะ</p>
+<div class="pn">2 / 10</div></section>
+
+<!-- 3 -->
+<section class="s"><div class="rail"><i></i></div>
+<h2><small>1 · Storage Engine</small>ตำแหน่งของ Storage Engine ในสถาปัตยกรรม MySQL</h2>
+<div class="row">
+<div class="layers">
+<div><b>Connection Layer</b> — รับการเชื่อมต่อ, ตรวจสิทธิ์, จัดการ thread</div>
+<div><b>SQL Layer</b> — Parser, Optimizer, Cache, ฟังก์ชัน, View, Routine</div>
+<div><b>Pluggable Storage Engine API</b> — ช่องเชื่อมมาตรฐาน</div>
+<div><b>Engine:</b> InnoDB · MyISAM · MEMORY · ARCHIVE · CSV · NDB ... → ไฟล์บนดิสก์/หน่วยความจำ</div>
+</div>
+<div class="card"><h3>หลักการสำคัญ</h3><ul>
+<li>SQL Layer เหมือนกันทุกตาราง แต่ <b>วิธีเก็บและค้นหาข้อมูลต่างกันตาม Engine</b></li>
+<li>ตารางเดียวกัน = Engine เดียว แต่ฐานข้อมูลเดียวผสมหลาย Engine ได้</li>
+<li>ตรวจดู: <code>SHOW ENGINES;</code></li>
+<li>ค่าเริ่มต้นตั้งแต่ MySQL 5.5.5 คือ <b>InnoDB</b></li>
+<li>สิ่งที่ Engine กำหนด: ACID, ระดับการล็อก, Foreign Key, ชนิดดัชนี, การกู้คืนหลังล่ม, รูปแบบไฟล์</li></ul></div>
+</div><div class="pn">3 / 10</div></section>
+
+<!-- 4 -->
+<section class="s"><div class="rail"><i></i></div>
+<h2><small>1 · Storage Engine</small>เปรียบเทียบ Engine ที่ใช้บ่อย</h2>
+<table>
+<tr><th>Engine</th><th>Transaction / FK</th><th>การล็อก</th><th>จุดเด่น</th><th>ข้อจำกัด</th></tr>
+<tr><td>InnoDB</td><td class="y">รองรับ ACID + FK</td><td>Row-level + MVCC</td><td>กู้คืนหลังล่มได้ (redo log), Clustered Index, FULLTEXT, ทำงานพร้อมกันสูง</td><td>กินพื้นที่/หน่วยความจำกว่า, <code>COUNT(*)</code> ช้ากว่า MyISAM</td></tr>
+<tr><td>MyISAM</td><td class="n">ไม่รองรับ</td><td>Table-level</td><td>โครงสร้างเรียบง่าย อ่านเร็ว คัดลอกไฟล์ย้ายง่าย</td><td>ไม่ crash-safe, เขียนพร้อมกันได้ต่ำ, ไม่มี FK — ปัจจุบันไม่แนะนำ</td></tr>
+<tr><td>MEMORY</td><td class="n">ไม่รองรับ</td><td>Table-level</td><td>เก็บใน RAM เร็วมาก, Hash index</td><td>ข้อมูลหายเมื่อรีสตาร์ท, ไม่รองรับ TEXT/BLOB</td></tr>
+<tr><td>ARCHIVE</td><td class="n">ไม่รองรับ</td><td>Row-level</td><td>บีบอัดสูง เหมาะกับ log</td><td>INSERT/SELECT เท่านั้น แก้ไข/ลบไม่ได้, ดัชนีจำกัด</td></tr>
+<tr><td>CSV</td><td class="n">ไม่รองรับ</td><td>Table-level</td><td>เป็นไฟล์ .CSV เปิดใน Excel ได้ทันที</td><td>ไม่มีดัชนี, ห้ามมีคอลัมน์ NULL</td></tr>
+</table>
+<p style="font-size:17px;color:var(--mute)">Engine อื่นที่ควรรู้: <b>BLACKHOLE</b> (ทิ้งข้อมูล ใช้ทำ replication relay), <b>FEDERATED</b> (เข้าถึงตารางบนเซิร์ฟเวอร์อื่น), <b>NDB</b> (MySQL Cluster)</p>
+<div class="pn">4 / 10</div></section>
+
+<!-- 5 -->
+<section class="s"><div class="rail"><i></i></div>
+<h2><small>1 · Storage Engine</small>การเลือกและการใช้งาน</h2>
+<div class="row">
+<pre><span class="c">-- ระบุ Engine ตอนสร้างตาราง</span>
+<span class="k">CREATE TABLE</span> orders (
+  id          <span class="k">BIGINT AUTO_INCREMENT PRIMARY KEY</span>,
+  customer_id <span class="k">INT NOT NULL</span>,
+  total       <span class="k">DECIMAL</span>(10,2),
+  <span class="k">FOREIGN KEY</span> (customer_id)
+    <span class="k">REFERENCES</span> customers(id)
+) <span class="k">ENGINE</span>=InnoDB;
+
+<span class="c">-- ตาราง log ที่เขียนอย่างเดียว</span>
+<span class="k">CREATE TABLE</span> access_log (
+  at <span class="k">DATETIME</span>, url <span class="k">VARCHAR</span>(255)
+) <span class="k">ENGINE</span>=ARCHIVE;
+
+<span class="c">-- ดู / เปลี่ยน Engine</span>
+<span class="k">SHOW ENGINES</span>;
+<span class="k">SHOW TABLE STATUS LIKE</span> <span class="f">'orders'</span>;
+<span class="k">ALTER TABLE</span> t <span class="k">ENGINE</span>=InnoDB;</pre>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div class="card"><h3>แนวทางเลือกใช้</h3><ul>
+<li><b>ระบบธุรกรรมทั่วไป</b> (ร้านค้า, ธนาคาร, ERP) → InnoDB</li>
+<li><b>ข้อมูลชั่วคราว/แคชที่สร้างใหม่ได้</b> → MEMORY</li>
+<li><b>Log/เก็บถาวรปริมาณมาก</b> → ARCHIVE</li>
+<li><b>แลกเปลี่ยนไฟล์กับโปรแกรมอื่น</b> → CSV</li></ul></div>
+<div class="card r"><h3>ข้อควรระวัง</h3><ul><li><code>ALTER ... ENGINE</code> สร้างตารางใหม่ ล็อกนานกับตารางใหญ่</li><li>ผสมหลาย Engine ใน transaction เดียว ย้อนกลับ (ROLLBACK) ได้ไม่ครบ</li></ul></div></div>
+</div><div class="pn">5 / 10</div></section>
+
+<!-- 6 -->
+<section class="s"><div class="rail"><i style="--c:var(--amber)"></i></div>
+<h2><small>2 · View</small>View คืออะไร และใช้อย่างไร</h2>
+<div class="row">
+<div style="display:flex;flex-direction:column;gap:14px">
+<div class="card a"><h3>หลักการสำคัญ</h3><ul>
+<li>View = <b>คำสั่ง SELECT ที่ตั้งชื่อไว้</b> เรียกใช้เหมือนตาราง</li>
+<li>ไม่เก็บข้อมูลเอง ทุกครั้งที่ query จะอ่านจากตารางต้นทางเสมอ (MySQL ไม่มี Materialized View)</li>
+<li>ควบคุมสิทธิ์ได้รายคอลัมน์ผ่าน <code>GRANT SELECT ON view</code></li>
+<li><code>ALGORITHM</code>: <b>MERGE</b> (รวมเข้า query หลัก เร็ว), <b>TEMPTABLE</b> (สร้างตารางชั่วคราวก่อน), <b>UNDEFINED</b></li></ul></div>
+<div class="card"><h3>ตัวอย่างการใช้</h3><ul><li>รายงานยอดขายที่ JOIN หลายตาราง</li><li>ซ่อนคอลัมน์ลับ (เช่น เงินเดือน, รหัสผ่าน)</li><li>ให้แอปเก่าเห็นโครงสร้างเดิมหลังปรับ schema</li></ul></div></div>
+<pre><span class="k">CREATE OR REPLACE VIEW</span> v_customer_sales <span class="k">AS</span>
+<span class="k">SELECT</span> c.id, c.name,
+       <span class="k">COUNT</span>(o.id)  <span class="k">AS</span> orders,
+       <span class="k">SUM</span>(o.total) <span class="k">AS</span> revenue
+<span class="k">FROM</span> customers c
+<span class="k">LEFT JOIN</span> orders o <span class="k">ON</span> o.customer_id = c.id
+<span class="k">GROUP BY</span> c.id, c.name;
+
+<span class="c">-- ใช้งานเหมือนตารางปกติ</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> v_customer_sales
+<span class="k">WHERE</span> revenue &gt; 10000;
+
+<span class="c">-- View แบบอัปเดตได้ + กันข้อมูลหลุดเงื่อนไข</span>
+<span class="k">CREATE VIEW</span> v_active_users <span class="k">AS</span>
+<span class="k">SELECT</span> id, name, status <span class="k">FROM</span> users
+<span class="k">WHERE</span> status = <span class="f">'active'</span>
+<span class="k">WITH CHECK OPTION</span>;</pre>
+</div><div class="pn">6 / 10</div></section>
+
+<!-- 7 -->
+<section class="s"><div class="rail"><i style="--c:var(--amber)"></i></div>
+<h2><small>2 · View</small>จุดเด่น ข้อจำกัด และการนำไปใช้</h2>
+<div class="row">
+<div class="card"><h3>จุดเด่น</h3><ul>
+<li><b>ความง่าย</b> — ซ่อน JOIN ซับซ้อนไว้หลังชื่อเดียว</li>
+<li><b>ความปลอดภัย</b> — เปิดเฉพาะแถว/คอลัมน์ที่อนุญาต</li>
+<li><b>ใช้ซ้ำ</b> — แก้นิยามที่เดียว ทุกแอปได้ผลตรงกัน</li>
+<li><b>อิสระจาก schema</b> — ปรับตารางเบื้องหลังได้โดยไม่กระทบผู้ใช้</li>
+<li><code>SQL SECURITY DEFINER | INVOKER</code> กำหนดว่าใช้สิทธิ์ของใคร</li></ul></div>
+<div class="card r"><h3>ข้อจำกัด</h3><ul>
+<li>สร้างดัชนีบน View โดยตรงไม่ได้ ต้องพึ่งดัชนีของตารางจริง</li>
+<li>View ซ้อน View หลายชั้น ทำให้ optimizer ทำงานยากและช้า</li>
+<li><b>อัปเดตผ่าน View ได้เฉพาะ</b> กรณีแถวใน View ตรงกับแถวในตารางแบบ 1:1 — ห้ามมี <code>GROUP BY, DISTINCT, UNION, aggregate</code></li>
+<li>ไม่รองรับ trigger บน View</li>
+<li>ถ้าตารางต้นทางเปลี่ยนชื่อ/ลบคอลัมน์ View จะใช้ไม่ได้ (ตรวจด้วย <code>CHECK TABLE</code>)</li></ul></div>
+<div class="card a"><h3>การนำไปใช้</h3><ul>
+<li>Reporting / Dashboard / BI</li>
+<li>Data mart ชั้นอ่านอย่างเดียว</li>
+<li>จำกัดสิทธิ์ผู้ใช้ฝ่ายต่าง ๆ</li>
+<li>ชั้น compatibility ตอนย้ายระบบ</li>
+<li><b>เคล็ดลับ:</b> ตั้งชื่อนำหน้า <code>v_</code>, หลีกเลี่ยง <code>SELECT *</code> ในนิยาม, ใช้ <code>EXPLAIN</code> ตรวจแผนการทำงาน</li></ul></div>
+</div><div class="pn">7 / 10</div></section>
+
+<!-- 8 -->
+<section class="s"><div class="rail"><i style="--c:var(--rose)"></i></div>
+<h2><small>3 · Routine</small>Stored Procedure กับ Stored Function</h2>
+<table>
+<tr><th>หัวข้อ</th><th>Stored Procedure</th><th>Stored Function</th></tr>
+<tr><td>การเรียกใช้</td><td><code>CALL sp_name(...)</code> เรียกเป็นคำสั่งเดี่ยว</td><td>ใช้ในนิพจน์ เช่น <code>SELECT fn(col)</code>, <code>WHERE</code></td></tr>
+<tr><td>ค่าที่ส่งกลับ</td><td>ไม่จำเป็นต้องมี ส่งผ่านพารามิเตอร์ <b>IN / OUT / INOUT</b> หรือ result set ได้หลายชุด</td><td><b>ต้องคืนค่าเดียว</b> (<code>RETURNS</code>) ชนิดข้อมูลเดียว</td></tr>
+<tr><td>งานที่ทำได้</td><td>INSERT/UPDATE/DELETE, <code>START TRANSACTION / COMMIT</code>, SQL แบบ dynamic (<code>PREPARE</code>)</td><td>คำนวณ/แปลงค่า; ห้ามคืน result set และห้ามสั่ง COMMIT/ROLLBACK</td></tr>
+<tr><td>เหมาะกับ</td><td>กระบวนการทางธุรกิจหลายขั้นตอน, งานแบตช์, ย้ายข้อมูล</td><td>สูตรคำนวณที่ใช้ซ้ำ เช่น ภาษี ส่วนลด จัดรูปแบบข้อความ</td></tr>
+<tr><td>องค์ประกอบร่วม</td><td colspan="2"><code>DECLARE</code> ตัวแปร · <code>IF / CASE</code> · <code>LOOP / WHILE / REPEAT</code> · <b>Cursor</b> · <b>Handler</b> (<code>DECLARE ... HANDLER</code>) สำหรับจัดการข้อผิดพลาด</td></tr>
+</table>
+<div class="row"><div class="card r"><h3>หลักการสำคัญ</h3><p>ตรรกะถูก <b>คอมไพล์เก็บไว้ในฐานข้อมูล</b> ส่งแค่ชื่อกับพารามิเตอร์ผ่านเครือข่าย ลดการสื่อสารไป-กลับ และกำหนดสิทธิ์ <code>EXECUTE</code> แยกจากสิทธิ์ของตารางได้</p></div></div>
+<div class="pn">8 / 10</div></section>
+
+<!-- 9 -->
+<section class="s"><div class="rail"><i style="--c:var(--rose)"></i></div>
+<h2><small>3 · Routine</small>ตัวอย่างโค้ด: สั่งซื้อสินค้าอย่างปลอดภัย + คำนวณ VAT</h2>
+<div class="row">
+<pre><span class="k">DELIMITER</span> //
+<span class="k">CREATE PROCEDURE</span> sp_place_order(
+  <span class="k">IN</span> p_cust <span class="k">INT</span>, <span class="k">IN</span> p_amt <span class="k">DECIMAL</span>(10,2),
+  <span class="k">OUT</span> p_id <span class="k">BIGINT</span>)
+<span class="k">BEGIN</span>
+  <span class="k">DECLARE EXIT HANDLER FOR SQLEXCEPTION</span>
+  <span class="k">BEGIN</span>
+    <span class="k">ROLLBACK</span>; <span class="k">RESIGNAL</span>;
+  <span class="k">END</span>;
+  <span class="k">START TRANSACTION</span>;
+  <span class="k">INSERT INTO</span> orders(customer_id, total)
+    <span class="k">VALUES</span> (p_cust, p_amt);
+  <span class="k">SET</span> p_id = <span class="f">LAST_INSERT_ID</span>();
+  <span class="k">COMMIT</span>;
+<span class="k">END</span> //
+
+<span class="k">CREATE FUNCTION</span> fn_vat(p_amt <span class="k">DECIMAL</span>(10,2))
+<span class="k">RETURNS DECIMAL</span>(10,2) <span class="k">DETERMINISTIC</span>
+<span class="k">RETURN ROUND</span>(p_amt * 0.07, 2) //
+<span class="k">DELIMITER</span> ;</pre>
+<div style="display:flex;flex-direction:column;gap:14px">
+<pre style="font-size:15.5px"><span class="c">-- เรียกใช้</span>
+<span class="k">CALL</span> sp_place_order(1, 1500.00, @new_id);
+<span class="k">SELECT</span> @new_id;
+
+<span class="k">SELECT</span> id, total, fn_vat(total) <span class="k">AS</span> vat
+<span class="k">FROM</span> orders;
+
+<span class="k">SHOW PROCEDURE STATUS WHERE</span> Db = <span class="f">'shop'</span>;
+<span class="k">DROP PROCEDURE IF EXISTS</span> sp_place_order;</pre>
+<div class="card r"><h3>จุดที่ควรสังเกต</h3><ul>
+<li><b>HANDLER</b> + ROLLBACK ทำให้ทั้งชุดคำสั่งสำเร็จหรือย้อนกลับพร้อมกัน</li>
+<li><code>DELIMITER</code> ใช้เฉพาะ mysql client เพื่อให้เครื่องหมาย <code>;</code> ภายในไม่ตัดคำสั่ง</li>
+<li><code>DETERMINISTIC</code> ช่วยให้ผลลัพธ์คาดเดาได้</li></ul></div></div>
+</div><div class="pn">9 / 10</div></section>
+
+<!-- 10 -->
+<section class="s"><div class="rail"><i style="--c:var(--rose)"></i></div>
+<h2><small>3 · Routine</small>จุดเด่น ข้อจำกัด และการนำไปใช้</h2>
+<div class="row">
+<div class="card"><h3>จุดเด่น</h3><ul>
+<li><b>ลด network round-trip</b> — หลายคำสั่งรวมเป็นการเรียกครั้งเดียว</li>
+<li><b>ตรรกะรวมศูนย์</b> — แอปหลายภาษา/หลายระบบใช้กฎเดียวกัน</li>
+<li><b>ปลอดภัย</b> — ให้สิทธิ์ <code>EXECUTE</code> โดยไม่เปิดตารางตรง ๆ, ช่วยลดความเสี่ยง SQL Injection เมื่อส่งค่าเป็นพารามิเตอร์</li>
+<li><b>ความสอดคล้องของข้อมูล</b> — รวมธุรกรรมไว้จุดเดียว</li></ul></div>
+<div class="card r"><h3>ข้อจำกัด</h3><ul>
+<li>Debug ยาก ไม่มี debugger ในตัว และเครื่องมือทดสอบจำกัด</li>
+<li>จัดการเวอร์ชันยาก ต้องเก็บสคริปต์ใน Git/Migration</li>
+<li>ภาษา SQL/PSM ต่างกันในแต่ละ DBMS ทำให้ย้ายระบบยาก</li>
+<li>ภาระงานย้ายมาอยู่ที่ DB ซึ่งขยายขนาดยากกว่าเซิร์ฟเวอร์แอป</li>
+<li>เปิด binary log ต้องตั้ง <code>DETERMINISTIC</code> หรือ <code>log_bin_trust_function_creators</code></li>
+<li>Function ที่ใช้ใน <code>WHERE</code> ทำให้ดัชนีใช้ไม่ได้</li></ul></div>
+<div class="card a"><h3>การนำไปใช้</h3><ul>
+<li>กระบวนการชำระเงิน/ตัดสต็อก/โอนเงิน</li>
+<li>งานแบตช์ปิดยอดรายวัน-เดือน</li>
+<li>ตรวจสอบและแปลงข้อมูลก่อนบันทึก</li>
+<li>สูตรคำนวณกลางที่ใช้ในรายงาน</li>
+<li><b>แนวปฏิบัติ:</b> ตั้งชื่อ <code>sp_</code> / <code>fn_</code>, ใส่ Handler ทุกครั้ง, ไม่ใส่ตรรกะที่เปลี่ยนบ่อยไว้ใน DB</li></ul></div>
+</div><div class="pn">10 / 10</div></section>
+
+<div id="bar"></div>
+</main>
+<nav class="nav" aria-label="นำทางสไลด์"><button id="prev">ก่อนหน้า</button><button id="next">ถัดไป</button></nav>
+<script>
+(function(){
+var S=[].slice.call(document.querySelectorAll('.s')),i=0,st=document.getElementById('stage'),bar=document.getElementById('bar');
+function fit(){var k=Math.min(innerWidth/1280,(innerHeight-44)/720);st.style.transform='translate(-50%,-50%) scale('+k+')';st.style.top='calc(50% - 22px)'}
+function go(n){i=Math.max(0,Math.min(S.length-1,n));S.forEach(function(s,j){s.classList.toggle('on',j===i)});bar.style.width=(i+1)/S.length*100+'%';try{history.replaceState(null,'','#'+(i+1))}catch(e){}}
+document.getElementById('prev').onclick=function(){go(i-1)};
+document.getElementById('next').onclick=function(){go(i+1)};
+addEventListener('keydown',function(e){if(/ArrowRight|PageDown| /.test(e.key))go(i+1);if(/ArrowLeft|PageUp/.test(e.key))go(i-1);if(e.key==='Home')go(0);if(e.key==='End')go(S.length-1)});
+addEventListener('resize',fit);fit();go((parseInt(location.hash.slice(1))||1)-1);
+})();
+</script>
+</body>
+</html>
